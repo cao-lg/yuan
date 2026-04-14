@@ -4,8 +4,8 @@
 	"description": "A template project for Phaser3 using Parceljs",
 	"scripts": {
 		"start": "npx parcel src/index.html -p 8000",
-		"build": "npx parcel build src/index.html --dist-dir dist",
-		"build-gh": "npx parcel build src/index.html --dist-dir dist --public-url /phaser3-dungeon-crawler-starter/",
+		"build": "npx parcel build src/index.html --dist-dir dist && npx shx cp -r public/* dist/",
+		"build-gh": "npx parcel build src/index.html --dist-dir dist --public-url /phaser3-dungeon-crawler-starter/ && npx shx cp -r public/* dist/",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"author": "supertommy",
@@ -20,6 +20,8 @@
 		"minimist": ">=1.2.2",
 		"parcel-plugin-clean-easy": "^1.0.2",
 		"parcel-plugin-static-files-copy": "^2.2.1",
+		"parcel-reporter-static-files-copy": "^1.5.3",
+		"shx": "^0.4.0",
 		"typescript": "^3.8.3"
 	},
 	"dependencies": {
