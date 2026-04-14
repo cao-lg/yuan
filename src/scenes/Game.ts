@@ -44,7 +44,7 @@ export default class Game extends Phaser.Scene
 		const map = this.make.tilemap({ key: 'dungeon' })
 		const tileset = map.addTilesetImage('dungeon', 'tiles', 16, 16, 1, 2)
 
-		map.createStaticLayer('Ground', tileset)
+		map.createLayer('Ground', tileset)
 
 		this.knives = this.physics.add.group({
 			classType: Phaser.Physics.Arcade.Image,
@@ -54,7 +54,7 @@ export default class Game extends Phaser.Scene
 		this.faune = this.add.faune(128, 128, 'faune')
 		this.faune.setKnives(this.knives)
 
-		const wallsLayer = map.createStaticLayer('Walls', tileset)
+		const wallsLayer = map.createLayer('Walls', tileset)
 
 		wallsLayer.setCollisionByProperty({ collides: true })
 

@@ -18,5 +18,6 @@ export default new Phaser.Game({
 	scene: [Preloader, Game, GameUI],
 	scale: {
 		zoom: 2
-	}
+	},
+	backgroundColor: '#18216d'
 })
