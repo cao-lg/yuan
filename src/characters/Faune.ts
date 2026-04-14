@@ -42,6 +42,17 @@ export default class Faune extends Phaser.Physics.Arcade.Sprite
 		return this._health
 	}
 
+	get coins()
+	{
+		return this._coins
+	}
+
+	addCoins(amount: number)
+	{
+		this._coins += amount
+		sceneEvents.emit('player-coins-changed', this._coins)
+	}
+
 	constructor(scene: Phaser.Scene, x: number, y: number, texture: string, frame?: string | number)
 	{
 		super(scene, x, y, texture, frame)

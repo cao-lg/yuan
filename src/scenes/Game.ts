@@ -317,6 +317,22 @@ export default class Game extends Phaser.Scene
 		}
 	}
 
+	// 自动打开宝箱的处理
+	private handlePlayerChestCollision(obj1: Phaser.GameObjects.GameObject, obj2: Phaser.GameObjects.GameObject)
+	{
+		const chest = obj2 as Chest
+		const faune = obj1 as Faune
+		
+		// 检查宝箱是否已经打开
+		if (chest.anims.currentAnim.key !== 'chest-closed') {
+			return
+		}
+		
+		// 自动打开宝箱
+		const coins = chest.open()
+		faune.addCoins(coins)
+	}
+
 	// 监听窗口大小变化，更新按钮位置
 	resize(width: number, height: number) {
 		if (this.fireButton) {
