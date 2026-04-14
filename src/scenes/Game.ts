@@ -13,6 +13,7 @@ import Faune from '../characters/Faune'
 
 import { sceneEvents } from '../events/EventsCenter'
 import Chest from '../items/Chest'
+import DungeonGenerator from '../utils/DungeonGenerator'
 
 export default class Game extends Phaser.Scene
 {
@@ -29,6 +30,8 @@ export default class Game extends Phaser.Scene
 
 	private playerLizardsCollider?: Phaser.Physics.Arcade.Collider
 	private weaponColliders: Phaser.Physics.Arcade.Collider[] = []
+
+	private dungeonGenerator!: DungeonGenerator
 
 	constructor()
 	{
@@ -48,24 +51,50 @@ export default class Game extends Phaser.Scene
 		createLizardAnims(this.anims)
 		createChestAnims(this.anims)
 
-		const map = this.make.tilemap({ key: 'dungeon' })
-		const tileset = map.addTilesetImage('dungeon', 'tiles', 16, 16, 1, 2)
+		this.dungeonGenerator = this.registry.get('dungeonGenerator') as DungeonGenerator
 
-		map.createLayer('Ground', tileset)
+		const groundTiles = this.dungeonGenerator.getMappedTiles()
+		const wallsTiles = this.dungeonGenerator.getWallsTiles()
+		const dungeon = this.dungeonGenerator.getDungeon()
 
-		this.faune = this.add.faune(128, 128, 'faune')
+		const map = this.make.tilemap({
+			width: dungeon.width,
+			height: dungeon.height,
+			tileWidth: 16,
+			tileHeight: 16
+		})
+		const tileset = map.addTilesetImage('tiles', 'tiles', 16, 16, 1, 2)
 
-		this.wallsLayer = map.createLayer('Walls', tileset)
+		const groundLayer = map.createBlankLayer('Ground', tileset)
+		if (groundTiles) {
+			groundLayer!.putTilesAt(groundTiles, 0, 0)
+		}
 
-		this.wallsLayer.setCollisionByProperty({ collides: true })
+		this.wallsLayer = map.createBlankLayer('Walls', tileset)
+		if (wallsTiles) {
+			this.wallsLayer!.putTilesAt(wallsTiles, 0, 0)
+		}
+
+		this.wallsLayer.setCollision([55])
+
+		const startRoom = this.dungeonGenerator.getStartRoom()
+		const startX = (startRoom.x + Math.floor(startRoom.width / 2)) * 16
+		const startY = (startRoom.y + Math.floor(startRoom.height / 2)) * 16
+		this.faune = this.add.faune(startX, startY, 'faune')
 
 		const chests = this.physics.add.staticGroup({
 			classType: Chest
 		})
-		const chestsLayer = map.getObjectLayer('Chests')
-		chestsLayer.objects.forEach(chestObj => {
-			chests.get(chestObj.x! + chestObj.width! * 0.5, chestObj.y! - chestObj.height! * 0.5, 'treasure')
-		})
+		
+		const rooms = this.dungeonGenerator.getRooms()
+		for (let i = 1; i < rooms.length; i++) {
+			if (i % 3 === 0) {
+				const room = rooms[i]
+				const chestX = (room.x + Math.floor(room.width / 2)) * 16
+				const chestY = (room.y + Math.floor(room.height / 2)) * 16
+				chests.get(chestX, chestY, 'treasure')
+			}
+		}
 
 		this.cameras.main.startFollow(this.faune, true)
 
@@ -77,10 +106,14 @@ export default class Game extends Phaser.Scene
 			}
 		})
 
-		const lizardsLayer = map.getObjectLayer('Lizards')
-		lizardsLayer.objects.forEach(lizObj => {
-			this.lizards.get(lizObj.x! + lizObj.width! * 0.5, lizObj.y! - lizObj.height! * 0.5, 'lizard')
-		})
+		for (let i = 1; i < rooms.length; i++) {
+			if (i % 2 === 0) {
+				const room = rooms[i]
+				const lizardX = (room.x + Math.floor(room.width / 2) + 2) * 16
+				const lizardY = (room.y + Math.floor(room.height / 2) - 1) * 16
+				this.lizards.get(lizardX, lizardY, 'lizard')
+			}
+		}
 
 		this.physics.add.collider(this.faune, this.wallsLayer)
 		this.physics.add.collider(this.lizards, this.wallsLayer)
@@ -260,10 +293,17 @@ export default class Game extends Phaser.Scene
 	private handlePlayerChestCollision(obj1: Phaser.GameObjects.GameObject, obj2: Phaser.GameObjects.GameObject)
 	{
 		const chest = obj2 as Chest
-		this.faune.setChest(chest)
+		const faune = obj1 as Faune
+		
+		// 检查宝箱是否已经打开
+		if (chest.anims.currentAnim.key !== 'chest-closed') {
+			return
+		}
+		
+		// 自动打开宝箱
+		const coins = chest.open()
+		faune.addCoins(coins)
 	}
-
-
 
 	private handlePlayerLizardCollision(obj1: Phaser.GameObjects.GameObject, obj2: Phaser.GameObjects.GameObject)
 	{
@@ -315,22 +355,6 @@ export default class Game extends Phaser.Scene
 				this.faune.update(this.cursors);
 			}
 		}
-	}
-
-	// 自动打开宝箱的处理
-	private handlePlayerChestCollision(obj1: Phaser.GameObjects.GameObject, obj2: Phaser.GameObjects.GameObject)
-	{
-		const chest = obj2 as Chest
-		const faune = obj1 as Faune
-		
-		// 检查宝箱是否已经打开
-		if (chest.anims.currentAnim.key !== 'chest-closed') {
-			return
-		}
-		
-		// 自动打开宝箱
-		const coins = chest.open()
-		faune.addCoins(coins)
 	}
 
 	// 监听窗口大小变化，更新按钮位置
