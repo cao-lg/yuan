@@ -22,6 +22,7 @@ export default class Game extends Phaser.Scene
 	private joystickInput: { x: number; y: number } = { x: 0, y: 0 }
 	private fireButton?: Phaser.GameObjects.Image
 	private weaponSwitchButton?: Phaser.GameObjects.Image
+	private interactButton?: Phaser.GameObjects.Image
 
 	private lizards!: Phaser.Physics.Arcade.Group
 	private wallsLayer?: Phaser.Tilemaps.TilemapLayer
@@ -118,9 +119,44 @@ export default class Game extends Phaser.Scene
 		// 创建武器切换按钮
 		this.createWeaponSwitchButton()
 
+		// 创建交互按钮（用于打开箱子）
+		this.createInteractButton()
+
 		// 监听窗口大小变化
 		this.scale.on('resize', (gameSize: Phaser.Structs.Size) => {
 			this.resize(gameSize.width, gameSize.height)
+		})
+	}
+
+	private createInteractButton() {
+		// 计算按钮位置，使用百分比而不是固定值
+		const buttonSize = 50
+		const margin = 20
+		
+		// 创建交互按钮精灵
+		this.interactButton = this.add.image(
+			this.cameras.main.width - margin - buttonSize / 2,
+			this.cameras.main.height - margin - 180 - buttonSize / 2,
+			'knife'
+		)
+		.setScale(1.2)
+		.setInteractive()
+		.setScrollFactor(0)
+
+		// 为按钮添加点击事件
+		this.interactButton.on('pointerdown', () => {
+			// 触发空格键事件，这样可以复用现有的打开箱子逻辑
+			const spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
+			spaceKey.emit('down')
+		})
+
+		// 添加视觉反馈
+		this.interactButton.on('pointerover', () => {
+			this.interactButton?.setTint(0xaaaaaa)
+		})
+
+		this.interactButton.on('pointerout', () => {
+			this.interactButton?.clearTint()
 		})
 	}
 
@@ -299,6 +335,17 @@ export default class Game extends Phaser.Scene
 			this.weaponSwitchButton.setPosition(
 				width - margin - buttonSize / 2,
 				height - margin - fireButtonSize - buttonSize / 2
+			)
+		}
+
+		if (this.interactButton) {
+			const buttonSize = 50
+			const margin = 20
+			const fireButtonSize = 60
+			const weaponButtonSize = 45
+			this.interactButton.setPosition(
+				width - margin - buttonSize / 2,
+				height - margin - fireButtonSize - weaponButtonSize - buttonSize / 2
 			)
 		}
 	}
