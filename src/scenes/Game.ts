@@ -19,6 +19,7 @@ export default class Game extends Phaser.Scene
 	private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
 	private faune!: Faune
 	private joystick?: VirtualJoystick
+	private joystickInput: { x: number; y: number } = { x: 0, y: 0 }
 
 	private knives!: Phaser.Physics.Arcade.Group
 	private lizards!: Phaser.Physics.Arcade.Group
@@ -98,6 +99,15 @@ export default class Game extends Phaser.Scene
 			scene: this
 		})
 		this.add.existing(this.joystick)
+
+		// 监听虚拟摇杆事件
+		this.joystick.on('move', (data) => {
+			this.joystickInput = data
+		})
+
+		this.joystick.on('release', () => {
+			this.joystickInput = { x: 0, y: 0 }
+		})
 	}
 
 	private handlePlayerChestCollision(obj1: Phaser.GameObjects.GameObject, obj2: Phaser.GameObjects.GameObject)
@@ -138,38 +148,32 @@ export default class Game extends Phaser.Scene
 	
 	update(t: number, dt: number)
 	{
+		// 更新虚拟摇杆
+		this.joystick?.update()
+
 		if (this.faune)
 		{
-			// 检查虚拟摇杆是否存在
-			if (this.joystick) {
-				// 获取虚拟摇杆的输入
-				const joystickInput = this.joystick.getInputVector();
+			// 检查虚拟摇杆输入
+			if (this.joystickInput.x !== 0 || this.joystickInput.y !== 0) {
+				const speed = 100;
+				this.faune.setVelocity(this.joystickInput.x * speed, this.joystickInput.y * speed);
 				
-				// 使用虚拟摇杆的输入来控制角色移动
-				if (joystickInput.x !== 0 || joystickInput.y !== 0) {
-					const speed = 100;
-					this.faune.setVelocity(joystickInput.x * speed, joystickInput.y * speed);
-					
-					// 根据虚拟摇杆的输入更新角色动画
-					if (Math.abs(joystickInput.x) > Math.abs(joystickInput.y)) {
-						// 水平移动
-						this.faune.anims.play('faune-run-side', true);
-						this.faune.scaleX = joystickInput.x > 0 ? 1 : -1;
-						this.faune.body.offset.x = joystickInput.x > 0 ? 8 : 24;
-					} else {
-						// 垂直移动
-						if (joystickInput.y > 0) {
-							this.faune.anims.play('faune-run-down', true);
-						} else if (joystickInput.y < 0) {
-							this.faune.anims.play('faune-run-up', true);
-						}
-					}
+				// 根据虚拟摇杆的输入更新角色动画
+				if (Math.abs(this.joystickInput.x) > Math.abs(this.joystickInput.y)) {
+					// 水平移动
+					this.faune.anims.play('faune-run-side', true);
+					this.faune.scaleX = this.joystickInput.x > 0 ? 1 : -1;
+					this.faune.body.offset.x = this.joystickInput.x > 0 ? 8 : 24;
 				} else {
-					// 虚拟摇杆没有输入，使用键盘控制
-					this.faune.update(this.cursors);
+					// 垂直移动
+					if (this.joystickInput.y > 0) {
+						this.faune.anims.play('faune-run-down', true);
+					} else if (this.joystickInput.y < 0) {
+						this.faune.anims.play('faune-run-up', true);
+					}
 				}
 			} else {
-				// 虚拟摇杆不存在，使用键盘控制
+				// 虚拟摇杆没有输入，使用键盘控制
 				this.faune.update(this.cursors);
 			}
 		}
