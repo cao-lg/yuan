@@ -38,9 +38,19 @@ export default class GameUI extends Phaser.Scene
 
 		sceneEvents.on('player-health-changed', this.handlePlayerHealthChanged, this)
 
+		// 添加武器信息显示
+		const weaponLabel = this.add.text(10, 40, 'Pistol: 12/12', {
+			fontSize: '12'
+		})
+
+		sceneEvents.on('player-weapon-changed', (weaponName: string, ammo: number, maxAmmo: number) => {
+			weaponLabel.text = `${weaponName}: ${ammo}/${maxAmmo}`
+		})
+
 		this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
 			sceneEvents.off('player-health-changed', this.handlePlayerHealthChanged, this)
 			sceneEvents.off('player-coins-changed')
+			sceneEvents.off('player-weapon-changed')
 		})
 	}
 

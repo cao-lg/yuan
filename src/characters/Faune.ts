@@ -1,5 +1,8 @@
 import Phaser from 'phaser'
 import Chest from '../items/Chest'
+import Weapon from '../weapons/Weapon'
+import Pistol from '../weapons/Pistol'
+import Shotgun from '../weapons/Shotgun'
 
 import { sceneEvents } from '../events/EventsCenter'
 
@@ -29,7 +32,9 @@ export default class Faune extends Phaser.Physics.Arcade.Sprite
 	private _health = 3
 	private _coins = 0
 
-	private knives?: Phaser.Physics.Arcade.Group
+	private weapon?: Weapon
+	private weapons: Weapon[] = []
+	private currentWeaponIndex = 0
 	private activeChest?: Chest
 
 	get health()
@@ -42,11 +47,29 @@ export default class Faune extends Phaser.Physics.Arcade.Sprite
 		super(scene, x, y, texture, frame)
 
 		this.anims.play('faune-idle-down')
+
+		// 初始化武器系统
+		this.weapons.push(new Pistol(scene, this))
+		this.weapons.push(new Shotgun(scene, this))
+		this.weapon = this.weapons[0]
+
+		// 发射武器切换事件
+		sceneEvents.emit('player-weapon-changed', this.weapon.constructor.name, this.weapon.getAmmo(), this.weapon.getMaxAmmo())
 	}
 
 	setKnives(knives: Phaser.Physics.Arcade.Group)
 	{
-		this.knives = knives
+		// 保持向后兼容，实际不再使用
+	}
+
+	switchWeapon() {
+		this.currentWeaponIndex = (this.currentWeaponIndex + 1) % this.weapons.length
+		this.weapon = this.weapons[this.currentWeaponIndex]
+		sceneEvents.emit('player-weapon-changed', this.weapon.constructor.name, this.weapon.getAmmo(), this.weapon.getMaxAmmo())
+	}
+
+	getWeapon(): Weapon | undefined {
+		return this.weapon
 	}
 
 	setChest(chest: Chest)
@@ -86,15 +109,9 @@ export default class Faune extends Phaser.Physics.Arcade.Sprite
 		}
 	}
 
-	private throwKnife()
+	throwKnife()
 	{
-		if (!this.knives)
-		{
-			return
-		}
-
-		const knife = this.knives.get(this.x, this.y, 'knife') as Phaser.Physics.Arcade.Image
-		if (!knife)
+		if (!this.weapon)
 		{
 			return
 		}
@@ -127,17 +144,7 @@ export default class Faune extends Phaser.Physics.Arcade.Sprite
 				break
 		}
 
-		const angle = vec.angle()
-
-		knife.setActive(true)
-		knife.setVisible(true)
-
-		knife.setRotation(angle)
-
-		knife.x += vec.x * 16
-		knife.y += vec.y * 16
-
-		knife.setVelocity(vec.x * 300, vec.y * 300)
+		this.weapon.fire(this.x, this.y, vec)
 	}
 
 	preUpdate(t: number, dt: number)

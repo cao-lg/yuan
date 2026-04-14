@@ -20,11 +20,14 @@ export default class Game extends Phaser.Scene
 	private faune!: Faune
 	private joystick?: VirtualJoystick
 	private joystickInput: { x: number; y: number } = { x: 0, y: 0 }
+	private fireButton?: Phaser.GameObjects.Image
+	private weaponSwitchButton?: Phaser.GameObjects.Image
 
-	private knives!: Phaser.Physics.Arcade.Group
 	private lizards!: Phaser.Physics.Arcade.Group
+	private wallsLayer?: Phaser.Tilemaps.TilemapLayer
 
 	private playerLizardsCollider?: Phaser.Physics.Arcade.Collider
+	private weaponColliders: Phaser.Physics.Arcade.Collider[] = []
 
 	constructor()
 	{
@@ -49,17 +52,11 @@ export default class Game extends Phaser.Scene
 
 		map.createLayer('Ground', tileset)
 
-		this.knives = this.physics.add.group({
-			classType: Phaser.Physics.Arcade.Image,
-			maxSize: 3
-		})
-
 		this.faune = this.add.faune(128, 128, 'faune')
-		this.faune.setKnives(this.knives)
 
-		const wallsLayer = map.createLayer('Walls', tileset)
+		this.wallsLayer = map.createLayer('Walls', tileset)
 
-		wallsLayer.setCollisionByProperty({ collides: true })
+		this.wallsLayer.setCollisionByProperty({ collides: true })
 
 		const chests = this.physics.add.staticGroup({
 			classType: Chest
@@ -84,19 +81,25 @@ export default class Game extends Phaser.Scene
 			this.lizards.get(lizObj.x! + lizObj.width! * 0.5, lizObj.y! - lizObj.height! * 0.5, 'lizard')
 		})
 
-		this.physics.add.collider(this.faune, wallsLayer)
-		this.physics.add.collider(this.lizards, wallsLayer)
+		this.physics.add.collider(this.faune, this.wallsLayer)
+		this.physics.add.collider(this.lizards, this.wallsLayer)
 
 		this.physics.add.collider(this.faune, chests, this.handlePlayerChestCollision, undefined, this)
 
-		this.physics.add.collider(this.knives, wallsLayer, this.handleKnifeWallCollision, undefined, this)
-		this.physics.add.collider(this.knives, this.lizards, this.handleKnifeLizardCollision, undefined, this)
-
 		this.playerLizardsCollider = this.physics.add.collider(this.lizards, this.faune, this.handlePlayerLizardCollision, undefined, this)
+
+		// 添加武器碰撞检测
+		this.updateWeaponCollisions()
+
+		// 监听武器切换事件
+		sceneEvents.on('player-weapon-changed', () => {
+			this.updateWeaponCollisions()
+		})
 
 		// 创建虚拟摇杆
 		this.joystick = new VirtualJoystick({
-			scene: this
+			scene: this,
+			enableWithoutTouch: true // 允许在桌面使用鼠标测试
 		})
 		this.add.existing(this.joystick)
 
@@ -108,6 +111,114 @@ export default class Game extends Phaser.Scene
 		this.joystick.on('release', () => {
 			this.joystickInput = { x: 0, y: 0 }
 		})
+
+		// 创建开火按钮
+		this.createFireButton()
+
+		// 创建武器切换按钮
+		this.createWeaponSwitchButton()
+
+		// 监听窗口大小变化
+		this.scale.on('resize', (gameSize: Phaser.Structs.Size) => {
+			this.resize(gameSize.width, gameSize.height)
+		})
+	}
+
+	private createWeaponSwitchButton() {
+		// 计算按钮位置，使用百分比而不是固定值
+		const buttonSize = 45
+		const margin = 20
+		const fireButtonSize = 60
+		
+		// 创建武器切换按钮
+		this.weaponSwitchButton = this.add.image(
+			this.cameras.main.width - margin - buttonSize / 2,
+			this.cameras.main.height - margin - fireButtonSize - buttonSize / 2,
+			'knife'
+		)
+		.setScale(1.5)
+		.setInteractive()
+		.setScrollFactor(0)
+
+		// 为按钮添加点击事件
+		this.weaponSwitchButton.on('pointerdown', () => {
+			this.faune.switchWeapon()
+		})
+
+		// 添加视觉反馈
+		this.weaponSwitchButton.on('pointerover', () => {
+			this.weaponSwitchButton?.setTint(0xaaaaaa)
+		})
+
+		this.weaponSwitchButton.on('pointerout', () => {
+			this.weaponSwitchButton?.clearTint()
+		})
+	}
+
+	private updateWeaponCollisions() {
+		// 移除旧的碰撞检测
+		this.weaponColliders.forEach(collider => {
+			collider.destroy()
+		})
+		this.weaponColliders = []
+
+		// 获取当前武器
+		const weapon = this.faune.getWeapon()
+		if (!weapon) {
+			return
+		}
+
+		// 添加新的碰撞检测
+		const bullets = weapon.getBullets()
+		if (this.wallsLayer) {
+			this.weaponColliders.push(
+				this.physics.add.collider(bullets, this.wallsLayer, this.handleBulletWallCollision, undefined, this),
+				this.physics.add.collider(bullets, this.lizards, this.handleBulletLizardCollision, undefined, this)
+			)
+		}
+	}
+
+	private handleBulletWallCollision(obj1: Phaser.GameObjects.GameObject, obj2: Phaser.GameObjects.GameObject) {
+		const bullet = obj1 as Phaser.Physics.Arcade.Image
+		bullet.setActive(false)
+		bullet.setVisible(false)
+	}
+
+	private handleBulletLizardCollision(obj1: Phaser.GameObjects.GameObject, obj2: Phaser.GameObjects.GameObject) {
+		const bullet = obj1 as Phaser.Physics.Arcade.Image
+		bullet.setActive(false)
+		bullet.setVisible(false)
+		this.lizards.killAndHide(obj2)
+	}
+
+	private createFireButton() {
+		// 计算按钮位置，使用百分比而不是固定值
+		const buttonSize = 60
+		const margin = 20
+		
+		// 创建开火按钮精灵
+		this.fireButton = this.add.image(
+			this.cameras.main.width - margin - buttonSize / 2,
+			this.cameras.main.height - margin - buttonSize / 2,
+			'knife'
+		)
+		.setScale(2)
+		.setInteractive()
+		.setScrollFactor(0)
+
+		// 为按钮添加点击事件
+		this.fireButton.on('pointerdown', () => {
+			this.faune.throwKnife()
+		})
+
+		// 添加视觉反馈
+		this.fireButton.on('pointerover', () => {
+			this.fireButton?.setTint(0xaaaaaa)
+		})
+
+		this.fireButton.on('pointerout', () => {
+			this.fireButton?.clearTint()
+		})
 	}
 
 	private handlePlayerChestCollision(obj1: Phaser.GameObjects.GameObject, obj2: Phaser.GameObjects.GameObject)
@@ -116,16 +227,7 @@ export default class Game extends Phaser.Scene
 		this.faune.setChest(chest)
 	}
 
-	private handleKnifeWallCollision(obj1: Phaser.GameObjects.GameObject, obj2: Phaser.GameObjects.GameObject)
-	{
-		this.knives.killAndHide(obj1)
-	}
 
-	private handleKnifeLizardCollision(obj1: Phaser.GameObjects.GameObject, obj2: Phaser.GameObjects.GameObject)
-	{
-		this.knives.killAndHide(obj1)
-		this.lizards.killAndHide(obj2)
-	}
 
 	private handlePlayerLizardCollision(obj1: Phaser.GameObjects.GameObject, obj2: Phaser.GameObjects.GameObject)
 	{
@@ -176,6 +278,28 @@ export default class Game extends Phaser.Scene
 				// 虚拟摇杆没有输入，使用键盘控制
 				this.faune.update(this.cursors);
 			}
+		}
+	}
+
+	// 监听窗口大小变化，更新按钮位置
+	resize(width: number, height: number) {
+		if (this.fireButton) {
+			const buttonSize = 60
+			const margin = 20
+			this.fireButton.setPosition(
+				width - margin - buttonSize / 2,
+				height - margin - buttonSize / 2
+			)
+		}
+
+		if (this.weaponSwitchButton) {
+			const buttonSize = 45
+			const margin = 20
+			const fireButtonSize = 60
+			this.weaponSwitchButton.setPosition(
+				width - margin - buttonSize / 2,
+				height - margin - fireButtonSize - buttonSize / 2
+			)
 		}
 	}
 }

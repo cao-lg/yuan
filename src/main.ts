@@ -17,7 +17,17 @@ export default new Phaser.Game({
 	},
 	scene: [Preloader, Game, GameUI],
 	scale: {
-		zoom: 2
+		mode: Phaser.Scale.FIT,
+		autoCenter: Phaser.Scale.CENTER_BOTH,
+		zoom: 2,
+		min: {
+			width: 400,
+			height: 250
+		},
+		max: {
+			width: 1600,
+			height: 1000
+		}
 	},
 	backgroundColor: '#18216d'
 })
