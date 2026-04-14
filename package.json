@@ -3,9 +3,9 @@
 	"version": "1.0.0",
 	"description": "A template project for Phaser3 using Parceljs",
 	"scripts": {
-		"start": "parcel src/index.html -p 8000",
-		"build": "parcel build src/index.html --out-dir dist",
-		"build-gh": "parcel build src/index.html --out-dir dist --public-url /phaser3-dungeon-crawler-starter/",
+		"start": "npx parcel src/index.html -p 8000",
+		"build": "npx parcel build src/index.html --dist-dir dist",
+		"build-gh": "npx parcel build src/index.html --dist-dir dist --public-url /phaser3-dungeon-crawler-starter/",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"author": "supertommy",
